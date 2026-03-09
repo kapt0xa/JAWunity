@@ -319,7 +319,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9502fd5e6fd3a1a4e89488c9e25965f9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::IcosphereApplyer
-  subdivisions: 10
+  subdivisions: 1000
 --- !u!1 &1033260883
 GameObject:
   m_ObjectHideFlags: 0

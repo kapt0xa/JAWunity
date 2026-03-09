@@ -1,8 +1,14 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class IcosphereGenerator
 {
+    // solutions to:
+    // (2B)^2 = A^2 + B^2 + (A - B)^2 // edges are same length
+    // A^2 + B^2 = 1 // vertices are on unit sphere
+    const float A = 0.8506508083520399321815404970630110722404014037648168818367402423f; // sqrt( (5 + sqrt(5)) / 10 )
+    const float B = 0.5257311121191336060256690848478766072854979322433417815289355232f; // sqrt( (5 - sqrt(5)) / 10 )
     static readonly Mesh icosahedronTemplate = Resources.Load<Mesh>("IcosahedronTemplate");
     static readonly int[] icosahedronTriangles = icosahedronTemplate.triangles;
     static readonly Vector3[] icosahedronVertices = icosahedronTemplate.vertices;
@@ -12,18 +18,17 @@ public class IcosphereGenerator
 
     struct NodeName
     {
-        public const int OrigVert = 0; // a = vertex id, b = 0, c = 0
-        public const int EdgeVert = 1; // a = vertex with smaller id, b = vertex with larger id, c = offet along edge (1 - n-1)
-        public const int FaceVert = 2; // a = triangle index offset, b = offset along [0-1] edge, c = offset along [0-2] edge. b>=0, c>=0, b+c<n
-        public int type;
+        public const char OrigVert = 'V'; // a = vertex id, b = 0, c = 0
+        public const char EdgeVert = 'E'; // a = vertex with smaller id, b = vertex with larger id, c = offet along edge (1 - n-1)
+        public const char FaceVert = 'F'; // a = triangle index offset, b = offset along [0-1] edge, c = offset along [0-2] edge. b>=0, c>=0, b+c<n
+        public char type;
         public int a;
         public int b;
         public int c;
     }
 
-    public IcosphereGenerator(int subdivisions)
+    public static Mesh Generate(int subdivisions, bool normalized = true)
     {
-        this.subdivisions = subdivisions;
         // create verts
         Dictionary<NodeName, int> namedVerts = new Dictionary<NodeName, int>();
         for(int i = 0; i < icosahedronTriangles.Length; i += 3)
@@ -32,7 +37,7 @@ public class IcosphereGenerator
             {
                 for(int y = 0; y <= subdivisions - x; y++)
                 {
-                    var name = GetNodeName(i, x, y);
+                    var name = GetNodeName(i, x, y, subdivisions);
                     if(!namedVerts.ContainsKey(name))
                     {
                         namedVerts[name] = namedVerts.Count;
@@ -48,12 +53,13 @@ public class IcosphereGenerator
             for(int x = 0; x <= subdivisions; x++)
             {
                 NodeName a, b, c, d;
-                for(int y = 0; y <= subdivisions - x - 2; y++)
+                int y;
+                for(y = 0; y < subdivisions - x - 1; y++)
                 {
-                    a = GetNodeName(i, x, y);
-                    b = GetNodeName(i, x + 1, y);
-                    c = GetNodeName(i, x, y + 1);
-                    d = GetNodeName(i, x + 1, y + 1);
+                    a = GetNodeName(i, x, y, subdivisions);
+                    b = GetNodeName(i, x + 1, y, subdivisions);
+                    c = GetNodeName(i, x, y + 1, subdivisions);
+                    d = GetNodeName(i, x + 1, y + 1, subdivisions);
 
                     triangles.Add(namedVerts[a]);
                     triangles.Add(namedVerts[b]);
@@ -63,13 +69,17 @@ public class IcosphereGenerator
                     triangles.Add(namedVerts[d]);
                     triangles.Add(namedVerts[c]);
                 }
-                a = GetNodeName(i, x, subdivisions - x - 1);
-                b = GetNodeName(i, x + 1, subdivisions - x - 1);
-                c = GetNodeName(i, x, subdivisions - x);
 
-                triangles.Add(namedVerts[a]);
-                triangles.Add(namedVerts[b]);
-                triangles.Add(namedVerts[c]);
+                if(y == subdivisions - x - 1)
+                {
+                    a = GetNodeName(i, x, y, subdivisions);
+                    b = GetNodeName(i, x + 1, y, subdivisions);
+                    c = GetNodeName(i, x, y + 1, subdivisions);
+
+                    triangles.Add(namedVerts[a]);
+                    triangles.Add(namedVerts[b]);
+                    triangles.Add(namedVerts[c]);
+                }
             }
         }
 
@@ -77,21 +87,17 @@ public class IcosphereGenerator
         Vector3[] vertices = new Vector3[namedVerts.Count];
         foreach(var pair in namedVerts)
         {
-            vertices[pair.Value] = GetNodePos(pair.Key);
+            vertices[pair.Value] = GetNodePos(pair.Key, subdivisions, normalized);
         }
 
-        icosphereMesh = new Mesh();
+        var icosphereMesh = new Mesh();
         icosphereMesh.vertices = vertices;
         icosphereMesh.triangles = triangles.ToArray();
         icosphereMesh.RecalculateNormals();
-    }
-
-    public Mesh GetMesh()
-    {
         return icosphereMesh;
     }
 
-    NodeName GetNodeName(int triangleoffset, int x, int y)
+    static NodeName GetNodeName(int triangleoffset, int x, int y, int subdivisions)
     {
         if(x == 0 && y == 0)
         {
@@ -161,26 +167,32 @@ public class IcosphereGenerator
         };
     }
 
-    Vector3 GetNodePos(NodeName name)
+    static Vector3 GetNodePos(NodeName name, int subdivisions, bool normalized)
     {
+        Vector3 pos;
         switch(name.type)
         {
             case NodeName.OrigVert:
-                return icosahedronVertices[name.a].normalized;
+                pos = icosahedronVertices[name.a];
+                break;
             case NodeName.EdgeVert:
-                return Vector3.Lerp(
+                pos = Vector3.Lerp(
                     icosahedronVertices[name.a],
                     icosahedronVertices[name.b],
-                    (float)name.c / subdivisions).normalized;
+                    (float)name.c / subdivisions);
+                break;
             case NodeName.FaceVert:
                 var v0 = icosahedronVertices[icosahedronTriangles[name.a]];
                 var v1 = icosahedronVertices[icosahedronTriangles[name.a + 1]];
                 var v2 = icosahedronVertices[icosahedronTriangles[name.a + 2]];
                 var offset1 = (v1 - v0) * ((float)name.b / subdivisions);
                 var offset2 = (v2 - v0) * ((float)name.c / subdivisions);
-                return (v0 + offset1 + offset2).normalized;
+                pos = v0 + offset1 + offset2;
+                break;
             default:
                 throw new System.Exception("Invalid node type");
         }
+
+        return normalized ? pos.normalized : pos;
     }
 }
