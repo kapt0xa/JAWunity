@@ -1,7 +1,8 @@
+using System.Collections.Generic;
 using JetBrains.Annotations;
 using UnityEngine;
 
-public class IcosphereChunkType2
+public class IcosphereChunksType2
 {
     static readonly Mesh icosahedronTemplate = Resources.Load<Mesh>("IcosahedronTemplate");
     // public static readonly Vector3[] icoVerts = icosahedronTemplate.vertices;
@@ -10,8 +11,8 @@ public class IcosphereChunkType2
     // solutions to:
     // (2B)^2 = A^2 + B^2 + (A - B)^2 // edges are same length
     // A^2 + B^2 = 1 // vertices are on unit sphere
-    const float icoA = 0.8506508083520399321815404970630110722404014037648168818367402423f; // sqrt( (5 + sqrt(5)) / 10 ) = sqrt(1/phi/sqrt(5))
-    const float icoB = 0.5257311121191336060256690848478766072854979322433417815289355232f; // sqrt( (5 - sqrt(5)) / 10 ) = sqrt(phi/sqrt(5))
+    const float icoA = 0.8506508083520399321815404970630110722404014037648168818367402423f; // sqrt( (5 + sqrt(5)) / 10 ) = sqrt(sqrt(1/5)/phi)
+    const float icoB = 0.5257311121191336060256690848478766072854979322433417815289355232f; // sqrt( (5 - sqrt(5)) / 10 ) = sqrt(sqrt(1/5)*phi)
 
     public static readonly Vector3[] icoVerts =
         new Vector3[12]
@@ -62,6 +63,40 @@ public class IcosphereChunkType2
             3, 6, 9, // 18
             1, 8, 6, // 19
         };
+
+    (int, int)[] edges = new (int, int)[30]
+    {
+        (0, 1),
+        (0, 4),
+        (0, 5),
+        (0, 8),
+        (0, 10),
+        (1, 6),
+        (1, 7),
+        (1, 8),
+        (1, 10),
+        (2, 3),
+        (2, 4),
+        (2, 5),
+        (2, 9),
+        (2, 11),
+        (3, 6),
+        (3, 7),
+        (3, 9),
+        (3, 11),
+        (4, 5),
+        (4, 8),
+        (4, 9),
+        (5, 10),
+        (5, 11),
+        (6, 7),
+        (6, 8),
+        (6, 9),
+        (7, 10),
+        (7, 11),
+        (8, 9),
+        (10, 11),
+    };
     [UnityEditor.Callbacks.DidReloadScripts]
     static void IcosahedronCheck()
     {
@@ -85,12 +120,4 @@ public class IcosphereChunkType2
     const float dodecaA = 0.9341723589627156964511186235480453296292878265169952424405634575f; // sqrt((3 + sqrt(5)) / 6) = sqrt(1/3)/phi
     const float dodecaB = 0.3568220897730899319419698430460878739816860752468683664219611311f; // sqrt((3 - sqrt(5)) / 6) = sqrt(1/3)*phi
     const float dodecaC = 0.5773502691896257645091487805019574556476017512701268760186023264f; // sqrt(1/3)
-}
-
-public class FaceChunk : IcosphereChunkType2
-{
-    [SerializeField] int planetSize;
-    [SerializeField] int icoFace;
-    [SerializeField] Vector2Int affinPos;
-    //public Vector3 pos {get{}}
 }
