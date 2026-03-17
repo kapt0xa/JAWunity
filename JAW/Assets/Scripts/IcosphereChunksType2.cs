@@ -64,54 +64,67 @@ public class IcosphereChunksType2
             1, 8, 6, // 19
         };
 
-    (int, int)[] edges = new (int, int)[30]
-    {
-        (0, 1),
-        (0, 4),
-        (0, 5),
-        (0, 8),
-        (0, 10),
-        (1, 6),
-        (1, 7),
-        (1, 8),
-        (1, 10),
-        (2, 3),
-        (2, 4),
-        (2, 5),
-        (2, 9),
-        (2, 11),
-        (3, 6),
-        (3, 7),
-        (3, 9),
-        (3, 11),
-        (4, 5),
-        (4, 8),
-        (4, 9),
-        (5, 10),
-        (5, 11),
-        (6, 7),
-        (6, 8),
-        (6, 9),
-        (7, 10),
-        (7, 11),
-        (8, 9),
-        (10, 11),
-    };
+    static readonly Dictionary<(int, int), (int, int)> edgesToTriangles = GenerateEdgesToTriangles();
     [UnityEditor.Callbacks.DidReloadScripts]
     static void IcosahedronCheck()
     {
-        for(int i = 2; i < icoTriangles.Length; i += 3)
+        //common icosahedron sense
+        Debug.Assert(icoVerts.Length == 12);
+        Debug.Assert(icoTriangles.Length == 20*3);
+        // triangles and edge lengths are correct
+        for(int i = 0; i < icoTriangles.Length; i += 3)
         {
             Vector3 a, b, c;
-            a = icoVerts[icoTriangles[i - 2]];
-            b = icoVerts[icoTriangles[i - 1]];
-            c = icoVerts[icoTriangles[i - 0]];
+            a = icoVerts[icoTriangles[i + 0]];
+            b = icoVerts[icoTriangles[i + 1]];
+            c = icoVerts[icoTriangles[i + 2]];
             Debug.Assert((a-b).magnitude/icoB == 2.0f);
             Debug.Assert((c-b).magnitude/icoB == 2.0f);
             Debug.Assert((a-c).magnitude/icoB == 2.0f);
         }
         Debug.Log("asserts passed icosahedron edges lenght == 2*icoB");
+        // edge -> triangles mapping is correct
+        for(int i = 0; i < icoTriangles.Length; i += 3)
+        {
+            int a = icoTriangles[i + 0];
+            int b = icoTriangles[i + 1];
+            int c = icoTriangles[i + 2];
+            void CheckEdge(int x, int y)
+            {
+                var key = (Mathf.Min(x, y), Mathf.Max(x, y));
+                Debug.Assert(edgesToTriangles.ContainsKey(key));
+                var (t1, t2) = edgesToTriangles[key];
+                Debug.Assert(t1 == i || t2 == i);
+            }
+            CheckEdge(a, b);
+            CheckEdge(b, c);
+            CheckEdge(c, a);
+        }
+        Debug.Log("asserts passed icosahedron edges to triangles mapping");
     }
+    static Dictionary<(int, int), (int, int)> GenerateEdgesToTriangles()
+    {
+        var dict = new Dictionary<(int, int), (int, int)>();
+        for(int i = 0; i < icoTriangles.Length; i += 3)
+        {
+            int a = icoTriangles[i + 0];
+            int b = icoTriangles[i + 1];
+            int c = icoTriangles[i + 2];
+            void AddEdge(int x, int y)
+            {
+                var key = (Mathf.Min(x, y), Mathf.Max(x, y));
+                if (dict.ContainsKey(key))
+                    dict[key] = (dict[key].Item1, i);
+                else
+                    dict[key] = (i, -1);
+            }
+            AddEdge(a, b);
+            AddEdge(b, c);
+            AddEdge(c, a);
+        }
+        return dict;
+    }
+
 
     // solutions to:
     // 3C^2 = 1
